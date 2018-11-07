@@ -4,15 +4,20 @@ require_relative '../test_helper'
 SingleCov.covered! uncovered: 3
 
 describe SamsonEnv do
-  let(:deploy) { deploys(:succeeded_test) }
-  let(:stage) { deploy.stage }
-  let(:project) { stage.project }
+  let(:deploy) {deploys(:succeeded_test)}
+  let(:stage) {deploy.stage}
+  let(:project) {stage.project}
 
   describe :project_permitted_params do
     it "adds params" do
       Samson::Hooks.fire(:project_permitted_params).must_include(
-        environment_variables_attributes: [:name, :value, :scope_type_and_id, :_destroy, :id],
-        environment_variable_group_ids: []
+        [
+          {
+            environment_variables_attributes: [:name, :value, :scope_type_and_id, :_destroy, :id],
+            environment_variable_group_ids: []
+          },
+          :use_env_repo
+        ]
       )
     end
   end
@@ -32,7 +37,7 @@ describe SamsonEnv do
 
     describe ".env" do
       describe "without groups" do
-        before { stage.deploy_groups.delete_all }
+        before {stage.deploy_groups.delete_all}
 
         it "does not modify when no variables were specified" do
           EnvironmentVariable.delete_all
@@ -102,9 +107,9 @@ describe SamsonEnv do
     it "links to scoped env var" do
       group = EnvironmentVariableGroup.create!(name: "Bar")
       var = group.environment_variables.create!(
-        name: "WORLD3",
-        value: "hello",
-        scope_type_and_id: "Environment-#{environments(:production).id}"
+          name: "WORLD3",
+          value: "hello",
+          scope_type_and_id: "Environment-#{environments(:production).id}"
       )
       proc = Samson::Hooks.fire(:link_parts_for_resource).to_h.fetch("EnvironmentVariable")
       proc.call(var).must_equal ["WORLD3 for Production on Bar", EnvironmentVariable]
@@ -117,10 +122,10 @@ describe SamsonEnv do
       proc.call(user, action, group)
     end
 
-    let(:group) { EnvironmentVariableGroup.create!(name: "Bar", projects: [projects(:test)]) }
+    let(:group) {EnvironmentVariableGroup.create!(name: "Bar", projects: [projects(:test)])}
 
     it "cannot read" do
-      assert_raises(ArgumentError) { call(users(:admin), :read, group) }
+      assert_raises(ArgumentError) {call(users(:admin), :read, group)}
     end
 
     it "can write as admin" do

@@ -14,23 +14,23 @@ module SamsonEnv
 
     def env_groups(project, deploy_groups, **kwargs)
       groups =
-        if deploy_groups.any?
-          deploy_groups.map do |deploy_group|
-            [
-              ".#{deploy_group.name.parameterize}",
-              EnvironmentVariable.env(project, deploy_group, **kwargs)
-            ]
+          if deploy_groups.any?
+            deploy_groups.map do |deploy_group|
+              [
+                  ".#{deploy_group.name.parameterize}",
+                  EnvironmentVariable.env(project, deploy_group, **kwargs)
+              ]
+            end
+          else
+            [["", EnvironmentVariable.env(project, nil, **kwargs)]]
           end
-        else
-          [["", EnvironmentVariable.env(project, nil, **kwargs)]]
-        end
-      return groups if groups.any? { |_, data| data.present? }
+      return groups if groups.any? {|_, data| data.present?}
     end
 
     # https://github.com/bkeepers/dotenv/pull/188
     # shellescape does not work ... we only get strings, so inspect works pretty well
     def generate_dotenv(data)
-      data.map { |k, v| "#{k}=#{v.inspect.gsub("$", "\\$")}" }.join("\n") << "\n"
+      data.map {|k, v| "#{k}=#{v.inspect.gsub("$", "\\$")}"}.join("\n") << "\n"
     end
 
     private
@@ -53,9 +53,13 @@ Samson::Hooks.view :deploy_confirmation_tab_nav, "samson_env/deploy_tab_nav"
 Samson::Hooks.view :deploy_confirmation_tab_body, "samson_env/deploy_tab_body"
 Samson::Hooks.view :deploy_tab_nav, "samson_env/deploy_tab_nav"
 Samson::Hooks.view :deploy_tab_body, "samson_env/deploy_tab_body"
-
 Samson::Hooks.callback :project_permitted_params do
-  AcceptsEnvironmentVariables::ASSIGNABLE_ATTRIBUTES.merge(environment_variable_group_ids: [])
+  [
+      AcceptsEnvironmentVariables::ASSIGNABLE_ATTRIBUTES.merge(
+          environment_variable_group_ids: []
+      ),
+      :use_env_repo
+  ]
 end
 
 Samson::Hooks.callback :after_deploy_setup do |dir, job|
@@ -75,30 +79,30 @@ end
 # TODO: make a edit page and link to that
 Samson::Hooks.callback(:link_parts_for_resource) do
   [
-    "EnvironmentVariable",
-    ->(env) do
-      scope = " for #{env.scope.name}" if env.scope
-      parent = " on #{env.parent.name}" if env.parent
-      ["#{env.name}#{scope}#{parent}", EnvironmentVariable]
-    end
+      "EnvironmentVariable",
+      ->(env) do
+        scope = " for #{env.scope.name}" if env.scope
+        parent = " on #{env.parent.name}" if env.parent
+        ["#{env.name}#{scope}#{parent}", EnvironmentVariable]
+      end
   ]
 end
 
 Samson::Hooks.callback(:can) do
   [
-    :environment_variable_groups,
-    ->(user, action, group) do
-      case action
-      when :write
-        return true if user.admin?
+      :environment_variable_groups,
+      ->(user, action, group) do
+        case action
+        when :write
+          return true if user.admin?
 
-        administrated = user.administrated_projects.pluck(:id)
-        return true if administrated.any? && group.projects.pluck(:id).all? { |id| administrated.include?(id) }
+          administrated = user.administrated_projects.pluck(:id)
+          return true if administrated.any? && group.projects.pluck(:id).all? {|id| administrated.include?(id)}
 
-        false
-      else
-        raise ArgumentError, "Unsupported action #{action}"
+          false
+        else
+          raise ArgumentError, "Unsupported action #{action}"
+        end
       end
-    end
   ]
 end
